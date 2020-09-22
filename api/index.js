@@ -1,29 +1,35 @@
+// Express
 const express = require('express');
 const app = express();
 
+// Mongo
 const mongojs = require('mongojs');
 const db = mongojs('travel', [ 'records' ]);
 
+// Body Parser
 const bodyParser= require('body-parser');
 
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 
+// Validator
 const { body, param, validationResult } = require('express-validator');
 
-app.use(function(req, res, next) {
-    res.append('Access-Control-Allow-Origin', '*');
-    next();
-});
+// CORS
+const cors = require('cors');
+app.use(cors());
 
+// JWT
 const jwt = require("jsonwebtoken");
 const secret = "horse battery staple";
 
+// Auth Data
 const users = [
     { username: 'Alice', password: 'password', role: 'admin' },
     { username: 'Bob', password: 'password', role: 'user' },
 ];
 
+// Auth Middlewares
 function auth(req, res, next) {
     const authHeader = req.headers['authorization'];
     if(!authHeader) return res.sendStatus(401);
@@ -35,6 +41,7 @@ function auth(req, res, next) {
         if(err) return res.sendStatus(401);
         else next();
     });
+
     next();
 }
 
@@ -48,6 +55,7 @@ function onlyAdmin(req, res, next) {
     next();
 }
 
+// Login
 app.post('/api/login', function(req, res) {
     const { username, password } = req.body;
     const auth = users.find(function(u) {
@@ -63,12 +71,8 @@ app.post('/api/login', function(req, res) {
     }
 });
 
-app.get('/test', function(req, res) {
-    res.append('Access-Control-Allow-Origin', '*');
-    return res.json(req.query);
-});
-
-app.get('/api/records', auth, function(req, res){
+// CRUD
+app.get('/api/records', function(req, res){
 
     const options = req.query;
 
@@ -138,12 +142,15 @@ app.post('/api/records', [
         const _id = data._id
 
         res.append('Location', 'http://localhost:8000/api/records/' + _id);
+
         return res.status(201).json({ meta: { _id }, data });
     });
 });
 
 app.put('/api/records/:id', [
+
     param('id').isMongoId(),
+
 ], function(req, res) {
     const _id = req.params.id;
 
@@ -206,9 +213,13 @@ app.patch('/api/records/:id', function(req, res) {
 app.delete('/api/records/:id', auth, onlyAdmin, function(req, res) {
     const _id = req.params.id;
 
-    db.records.count({ _id: mongojs.ObjectId(_id) }, function(err, count) {
+    db.records.count({
+        _id: mongojs.ObjectId(_id)
+    }, function(err, count) {
         if(count) {
-            db.records.remove({ _id: mongojs.ObjectId(_id) }, function(err, data) {
+            db.records.remove({
+                _id: mongojs.ObjectId(_id)
+            }, function(err, data) {
                 return res.sendStatus(204);
             });
         } else{
@@ -217,6 +228,7 @@ app.delete('/api/records/:id', auth, onlyAdmin, function(req, res) {
     });
 });
 
+// Serving API
 app.listen(8000, function() {
     console.log('Server running at port 8000...');
 });
